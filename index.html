@@ -3,7 +3,9 @@
 <title> Gabi Test </title>
 <head>
 <link rel="stylesheet" type="text/css" href="css/bootstrap.css"/>
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Roboto+Slab">
 <style>
+ @import url(http://fonts.googleapis.com/css?family=Dosis);
 
 body {
   background: #fcfcfa;
@@ -30,7 +32,7 @@ form,p{
 
 
 .gratBackground{
-	fill:#3E454C;
+	fill:#3c8ac0/* #3E454C */;
 	
 }
 
@@ -73,6 +75,55 @@ form,p{
 	z-index: 999;
 }
 
+.d3-tip {
+        line-height: 1;
+        font-weight: bold;
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.8);
+        color: #fff;
+        border-radius: 10px 10px 10px 10px;
+        -moz-border-radius: 10px 10px 10px 10px;
+        -webkit-border-radius: 10px 10px 10px 10px;
+        /* border: 1px solid #ffffff; */
+        font-family: 'Dosis', sans-serif;
+        text-align: center;
+        
+        -webkit-box-shadow: 1px 1px 15px 4px rgba(0,0,0,0.75);
+        -moz-box-shadow: 1px 1px 15px 4px rgba(0,0,0,0.75);
+		box-shadow: 1px 1px 15px 4px rgba(0,0,0,0.75);
+      }
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+
+
+
+/* TOOLTIP */
+
+.tooltip-species {
+  display: block;
+  font-weight: bold;
+  font-size: 120%;
+  width: 100%;
+  text-align: center;
+  border-radius: 3px;
+} 
+
 
 
 </style>
@@ -101,6 +152,7 @@ form,p{
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script src="http://d3js.org/d3.geo.projection.v0.min.js"></script>
 <script src="http://d3js.org/topojson.v1.min.js"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
 <script src="http://underscorejs.org/underscore-min.js"></script>
 <script>
@@ -366,6 +418,8 @@ function updateResults(){
 
 	drawPoints(selected_insects);
 	
+	/* updateMapColor(selected_insects); */
+	
 	
 	//add another function to fill countries where species is found
 	
@@ -436,7 +490,9 @@ function setMap(){
 				    
 				    
 				
-				
+		 
+		 
+	/* 	var recolorMap = colorScale(recordsJSON);	 */	
 				
 		    	
 	    d3.json("data/world.topojson", function(error, data){
@@ -463,7 +519,13 @@ function setMap(){
 				  	
 				  	
 				  	var allCountries = topojson.feature(data, data.objects.countries);
+				  		  
 				  		  console.log(jsonCountries);
+				  		  
+				  		  recolorMap(jsonCountries);
+
+				  	
+				  		  
 
 		   });//end d3.json
 		   
@@ -502,10 +564,72 @@ function setMap(){
 
 
 
+function colorScale(data){
+
+	//create quantile classes with color scale
+	//var colors = colorClass();
+	
+	var color = d3.scale.quantile() //designate quantile scale generator
+		.range([
+			
+			"#fcae91",
+			"#fb6a4a",
+			"#de2d26",
+			"#a50f15"
+		]);
+		
+		//set min and max data values as domain
+	color.domain([0,2]);
+	
+	//2 for now, but should be the max of (total number of records found in one country)
+	//should write a function to count number of records in that country and append it to the species objects
+
+	//return the color scale generator
+	return color;	
+
+};
+
+
+//not yet called
+function updateMapColor(jsonCountries){
+	d3.selectAll(".countries") //select every province
+		.style("fill", function(d) { //color enumeration units
+			return choropleth(d, colorScale(recordsJSON)); //->
+		})
+		.select("desc") //replace the color text in each province's desc element
+			.text(function(d) {
+				return choropleth(d, colorScale(recordsJSON)); //->
+			});
+}
+
+//not yet called
+function choropleth(d, recolorMap){
+	//Get data value
+	var value = d.totalCount; //totalCount doesn't exist yet, must create it for every species in a particular country
+	//If value exists, assign it a color; otherwise assign gray
+	if (value) {
+		return recolorMap(value);
+	} else {
+		return "#fee5d9";
+	};
+};
+
+
 
 //update, enter, exit
 
 function drawPoints(selected_insects){
+
+	var tip = d3.tip()
+	.attr('class', 'd3-tip')
+	.offset([-10, 0])
+	.html(function(d) {
+	    return "<strong><i><span class='tooltip-species'>" +d.genus_name_valid+" "+ d.species_name_valid + "</span></i></strong> <br> Country: <strong>" + d.country+"</strong>" ;
+	});
+	
+	g.call(tip);
+
+
 	
 	var circles = g.selectAll('.dot')
 				.data(selected_insects);
@@ -571,7 +695,15 @@ function drawPoints(selected_insects){
 					'fill-opacity':1,
 					'stroke':'black'
 				});
+				
+			
 			})
+			
+			
+			circles
+			.on('mouseover', tip.show)
+			.on('mouseout', tip.hide);
+			
 			
 			
 					
